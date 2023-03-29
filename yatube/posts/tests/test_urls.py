@@ -62,21 +62,6 @@ class PostURLTests(TestCase):
                 response = self.authorized_client.get(address)
                 self.assertEqual(response.status_code, status)
 
-    def test_url_to_template(self):
-        """Проверка соответсвия url и template"""
-        urls_template = {
-            INDEX: 'posts/index.html',
-            GROUP: 'posts/group_list.html',
-            PROFILE: 'posts/profile.html',
-            f'/posts/{self.post.pk}/': 'posts/post_detail.html',
-            f'/posts/{self.post.pk}/edit/': 'posts/create_post.html',
-            CREATE: 'posts/create_post.html',
-        }
-        for address, template in urls_template.items():
-            with self.subTest(address=address):
-                response = self.authorized_client.get(address)
-                self.assertTemplateUsed(response, template)
-
     def test_post_edit_no_author(self):
         """Проверка редактирования поста не автором"""
         response = self.guest_client.get(

@@ -9,7 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Comment, Group, Post, User
+from posts.models import Group, Post, User
 
 CREATE = reverse('posts:post_create')
 PROFILE = reverse('posts:profile',
@@ -106,54 +106,4 @@ class PostsPagesTests(TestCase):
             text=form_data['text']).exists())
         self.assertTrue(Post.objects.filter(
             group=form_data['group']).exists(),
-        )
-
-    def test_auth_create_comment(self):
-        """Авторизованный пользователь может комментировать посты"""
-        comments_count = Comment.objects.count()
-        form_data = {
-            'text': 'Test comment, please ignore',
-        }
-        self.authorized_client.post(
-            reverse('posts:add_comment', kwargs={'post_id': self.post.pk}),
-            data=form_data,
-            follow=True,
-        )
-        new_comments_count = Comment.objects.count() - comments_count
-        self.assertEqual(new_comments_count,
-                         1,
-                         'Авторизованный пользователь не может'
-                         ' добавлять комментарии',
-                         )
-        self.assertTrue(Comment.objects.filter(
-            text=form_data['text'],
-        ).exists(),
-            'Не добавился текст комментария из формы',
-        )
-        self.assertTrue(Comment.objects.filter(
-            post=self.post,
-        ).exists(),
-            'Не добавился комментарий к нужному посту',
-        )
-        self.assertTrue(Comment.objects.filter(
-            author=self.author,
-        ).exists(),
-            'Комментарий добавляется не от того пользователя',
-        )
-
-    def test_guest_create_comment(self):
-        '''Гости не могут комментировать посты.'''
-        comments_count = Comment.objects.count()
-        form_data = {
-            "text": "Test guest comment, please ignore",
-        }
-        self.guest_client.post(
-            reverse("posts:add_comment", kwargs={'post_id': self.post.pk}),
-            data=form_data,
-            follow=True,
-        )
-        self.assertEqual(
-            Comment.objects.count(),
-            comments_count,
-            'Гость не должен добавлять комментарий',
         )

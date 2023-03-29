@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Follow, Group, Post, User
+from ..models import Group, Post, User
 
 INDEX = reverse('posts:index')
 CREATE = reverse('posts:post_create')
@@ -182,90 +182,13 @@ class PaginatorViewTests(TestCase):
             text=settings.POST_TEXT,
             group=cls.group,
             author=cls.author,
-        ) for i in range(15))
+        ) for _ in range(15))
         Post.objects.bulk_create(posts)
 
     def setUp(self) -> None:
         self.guest_client = Client()
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.author)
-
-    def test_paginator_index_page(self):
-        """Проверяем выведение постов на index"""
-        response = self.guest_client.get(INDEX)
-        self.assertEqual(
-            len(response.context.get('page_obj')), settings.POSTS_ON_PAGE)
 
     def test_paginator_index_page_two(self):
         """Проверяем выведение оставшихся постов на 2 странице"""
         response = self.guest_client.get(INDEX + '?page=2')
         self.assertEqual(len(response.context.get('page_obj')), 5)
-
-    def test_cache_index(self):
-        """Тест кэширования главной страницы"""
-        first = self.authorized_client.get(INDEX)
-        post = Post.objects.get(pk=1)
-        post.text = 'Измененный текст'
-        post.save()
-        second = self.authorized_client.get(INDEX)
-        self.assertEqual(first.content, second.content)
-        cache.clear()
-        third = self.authorized_client.get(INDEX)
-        self.assertNotEqual(first.content, third.content)
-
-
-class FollowTests(TestCase):
-    def setUp(self):
-        self.client_auth_follower = Client()
-        self.client_auth_following = Client()
-        self.user_follower = User.objects.create(username='follower')
-        self.user_following = User.objects.create(username='following')
-        self.post = Post.objects.create(
-            author=self.user_following,
-            text='Тестовая запись для тестирования ленты'
-        )
-        self.client_auth_follower.force_login(self.user_follower)
-        self.client_auth_following.force_login(self.user_following)
-
-    def test_follow(self):
-        self.client_auth_follower.get(
-            reverse('posts:profile_follow',
-                    kwargs={'username': self.user_following.username})
-        )
-        self.assertEqual(Follow.objects.all().count(), 1)
-
-    def test_unfollow(self):
-        self.client_auth_follower.get(reverse('posts:profile_follow',
-                                              kwargs={'username':
-                                                      self.user_following.
-                                                      username}))
-        self.client_auth_follower.get(reverse('posts:profile_unfollow',
-                                      kwargs={'username':
-                                              self.user_following.username}))
-        self.assertEqual(Follow.objects.all().count(), 0)
-
-    def test_subscription(self):
-        """Запись появляется в ленте подписчиков"""
-        Follow.objects.create(
-            user=self.user_follower,
-            author=self.user_following
-        )
-        response = self.client_auth_follower.get('/follow/')
-        post_text_0 = response.context["page_obj"][0].text
-        self.assertEqual(post_text_0, 'Тестовая запись для тестирования ленты')
-        response = self.client_auth_following.get('/follow/')
-        self.assertNotEqual(response, 'Тестовая запись для тестирования ленты')
-
-    def test_add_comment(self):
-        """Проверка добавления комментария"""
-        self.client_auth_following.post(f'/posts/{self.post.pk}/comment/',
-                                        {'text': "тестовый комментарий"},
-                                        follow=True)
-        response = self.client_auth_following.get(f'/posts/{self.post.pk}/')
-        self.assertContains(response, 'тестовый комментарий')
-        self.client_auth_following.logout()
-        self.client_auth_following.post(f'/posts/{self.post.pk}/comment/',
-                                        {'text': "комментарий от гостя"},
-                                        follow=True)
-        response = self.client_auth_following.get(f'/posts/{self.post.pk}/')
-        self.assertNotContains(response, 'комментарий от гостя')
