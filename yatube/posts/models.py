@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -80,7 +81,6 @@ class Comment(models.Model):
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        # ordering = ('-pub_date',)
 
     def __str__(self) -> str:
         return f'{self.author}: {self.text[:settings.POST_LIMIT]}'
@@ -103,12 +103,16 @@ class Follow(models.Model):
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=['author', 'user'],
                 name='unique_follow',
             ),
-        ]
+            models.CheckConstraint(
+                check=models.Q(user=models.F('author')),
+                name='user_cannot_follow_himself'
+            )
+        )
 
     def __str__(self) -> str:
         return f'{self.user} подписан на {self.author}'
