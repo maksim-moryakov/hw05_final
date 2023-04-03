@@ -18,11 +18,9 @@ class CacheTests(TestCase):
             author=cls.author,
             image=None,
         )
-    
+
     def setUp(self):
         self.guest_client = Client()
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.author)
         cache.clear()
 
     def test_page_correct_template(self):
