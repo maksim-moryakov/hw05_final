@@ -43,25 +43,25 @@ def group_posts(request, slug):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-
     post_list = Post.objects.filter(author=author)
     page_obj = paginator_object(request, post_list)
+    following = (request.user.is_authenticated
+                 and author.following.filter(user=request.user,))
     context = {
         'page_obj': page_obj,
         'author': author,
+        'following': following,
     }
     return render(request, 'posts/profile.html', context)
 
 
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
-    posts_count = post.author.posts.count()
     title = post.text[0:30]
     form = CommentForm(request.POST or None)
     comments = post.comments.all()
     context = {
         'post': post,
-        'posts_count': posts_count,
         'title': title,
         'form': form,
         'comments': comments
